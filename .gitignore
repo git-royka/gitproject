@@ -1,0 +1,13 @@
+#----IGNORED FILE----
+# FOLDER LOGS
+logs/ 
+bin/
+etc/
+libexec/
+share/
+contrib/
+lib/
+uninstall.sh
+# TXT-FILE
+docs/*.txt
+
