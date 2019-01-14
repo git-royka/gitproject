@@ -1,1 +1,2 @@
-echo "HI Git""
+<?php
+echo "HI Git";
