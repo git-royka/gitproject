@@ -1,3 +1,3 @@
 <?php
-echo "HI broo Git test merg";
+echo "HI broo Git";
 echo "branch master tut)";
