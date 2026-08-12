@@ -125,11 +125,6 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNVvcFM2
 // 2. ID вашого чату (число зі знаком мінус для супергруп, напр. -1001234567890)
 const CHAT_ID = "-1004459521892";
 
-// 2b. Базовий URL задеплоєного bot.js (там піднято медіа-проксі "/media/:messageId",
-//     який дістає фото/відео з повідомлення по message_id). Порожній рядок = картинки
-//     в самарі не показуються, поки бот не задеплоєний.
-const MEDIA_BASE_URL = "";
-
 // 3. Кольори для типів подій. Ключ має збігатися зі значенням у колонці "type" таблиці.
 const TYPE_COLORS = {
   online: "#1D9E75",
@@ -167,8 +162,8 @@ function buildMessageLink(threadId, messageId) {
 }
 
 function buildMediaUrl(messageId) {
-  if (!MEDIA_BASE_URL || !messageId) return null;
-  return `${MEDIA_BASE_URL.replace(/\/$/, "")}/media/${messageId}`;
+  if (!messageId) return null;
+  return `/api/media/${messageId}`;
 }
 
 function loadEvents() {
