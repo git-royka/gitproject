@@ -1,7 +1,11 @@
 import { Telegraf, Markup } from "telegraf";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const MINIAPP_URL = process.env.MINIAPP_URL;
+// Пряме посилання на зареєстрований у @BotFather (/newapp) Mini App.
+// На відміну від web_app-кнопки (Markup.button.webApp), звичайна URL-кнопка
+// з таким лінком працює і в приватних чатах, і в групах — Telegram сам
+// розпізнає t.me/<бот>/<назва> і відкриває застосунок напряму.
+const DIRECT_APP_LINK = "https://t.me/Calendar_TheInfoBusiness_bot/The_InfoBusiness_Calendar";
 // ID клубного чату (те саме значення, що CHAT_ID в index.html), звідки
 // медіа-проксі копіює повідомлення, щоб дістати фото/відео.
 const CHAT_ID = process.env.CHAT_ID;
@@ -32,9 +36,8 @@ const WELCOME_TEXT = `Привіт! Раді бачити тебе в клубі
 До зустрічі на ефірах! 👋`;
 
 function calendarKeyboard() {
-  if (!MINIAPP_URL) return undefined;
   return Markup.inlineKeyboard([
-    Markup.button.webApp("Календар подій", MINIAPP_URL),
+    Markup.button.url("Календар подій", DIRECT_APP_LINK),
   ]);
 }
 
@@ -53,9 +56,6 @@ bot.on("new_chat_members", async (ctx) => {
 
 // Команда /calendar в будь-якому місці чату
 bot.command("calendar", async (ctx) => {
-  if (!MINIAPP_URL) {
-    return ctx.reply("Календар ще не підключено. Додайте MINIAPP_URL у налаштування середовища");
-  }
   await ctx.reply("Відкрити календар подій:", calendarKeyboard());
 });
 
