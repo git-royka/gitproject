@@ -80,12 +80,14 @@ async function resolveFileId(messageId) {
   if (!CHAT_ID || !STORAGE_CHAT_ID) {
     throw new Error("CHAT_ID або STORAGE_CHAT_ID не налаштовано в середовищі");
   }
-  const copied = await bot.telegram.copyMessage(STORAGE_CHAT_ID, CHAT_ID, Number(messageId));
+  // forwardMessage (на відміну від copyMessage) повертає повний об'єкт
+  // повідомлення з масивом photo/video — саме звідти дістаємо file_id.
+  const forwarded = await bot.telegram.forwardMessage(STORAGE_CHAT_ID, CHAT_ID, Number(messageId));
   const fileId =
-    copied.photo?.[copied.photo.length - 1]?.file_id ||
-    copied.video?.file_id ||
-    copied.document?.file_id;
-  bot.telegram.deleteMessage(STORAGE_CHAT_ID, copied.message_id).catch(() => {});
+    forwarded.photo?.[forwarded.photo.length - 1]?.file_id ||
+    forwarded.video?.file_id ||
+    forwarded.document?.file_id;
+  bot.telegram.deleteMessage(STORAGE_CHAT_ID, forwarded.message_id).catch(() => {});
   if (!fileId) throw new Error("У повідомленні немає фото/відео");
   mediaFileIdCache.set(messageId, fileId);
   return fileId;
