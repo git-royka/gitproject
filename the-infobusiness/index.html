@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Календар клубу</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #222222);
+    --hint: var(--tg-theme-hint-color, #999999);
+    --accent: var(--tg-theme-button-color, #2481cc);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f2);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 12px;
+  }
+  .card {
+    background: var(--secondary-bg);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .header button {
+    width: 32px; height: 32px;
+    border: none; border-radius: 8px;
+    background: transparent;
+    font-size: 18px;
+    color: var(--text);
+  }
+  .month-label { font-size: 16px; font-weight: 600; }
+  .legend { display: flex; gap: 10px; font-size: 12px; color: var(--hint); margin-bottom: 10px; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .weekdays, .grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .weekdays div {
+    text-align: center;
+    font-size: 11px;
+    color: var(--hint);
+    margin-bottom: 4px;
+  }
+  .day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    gap: 2px;
+  }
+  .day.selected { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .day-dots { display: flex; gap: 2px; }
+  .day-dot { width: 4px; height: 4px; border-radius: 50%; }
+  .events-panel { margin-top: 14px; }
+  .events-date { font-size: 13px; color: var(--hint); margin: 0 0 8px 4px; }
+  .event-card {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .event-card .name { margin: 0; font-size: 14px; font-weight: 600; }
+  .event-card .time { margin: 0; font-size: 12px; color: var(--hint); }
+  .event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .empty { font-size: 14px; color: var(--hint); padding: 12px 4px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <button id="prevBtn" aria-label="Попередній місяць">‹</button>
+    <span class="month-label" id="monthLabel"></span>
+    <button id="nextBtn" aria-label="Наступний місяць">›</button>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="weekdays">
+    <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Нд</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="events-panel" id="eventsPanel"></div>
+
+<script>
+/*
+  =====================================================================
+  НАЛАШТУВАННЯ. Змініть значення нижче під ваш клуб.
+  =====================================================================
+*/
+
+// 1. Посилання на CSV-версію вашої Google Таблиці.
+//    Як отримати: у Google Sheets -> Файл -> Поділитися -> Опублікувати в інтернеті
+//    -> оберіть аркуш -> формат "Значення, розділені комами (.csv)" -> Опублікувати.
+//    Вставте отримане посилання сюди.
+const SHEET_CSV_URL = "PASTE_YOUR_PUBLISHED_CSV_LINK_HERE";
+
+// 2. ID вашого чату (число зі знаком мінус для супергруп, напр. -1001234567890)
+const CHAT_ID = "-1001234567890";
+
+// 3. Кольори для типів подій. Ключ має збігатися зі значенням у колонці "type" таблиці.
+const TYPE_COLORS = {
+  online: "#1D9E75",
+  offline: "#D85A30",
+  stream: "#7F77DD",
+};
+const TYPE_LABELS = {
+  online: "Онлайн",
+  offline: "Офлайн",
+  stream: "Ефір",
+};
+
+/*
+  Очікувана структура Google Таблиці (колонки, перший рядок — заголовки):
+  date       | title                  | type   | time  | thread_id | message_id
+  2026-08-12 | Офлайн-зустріч у Києві | offline| 18:30 | 45        | 812
+  Посилання на повідомлення формується автоматично як:
+  https://t.me/c/<CHAT_ID без мінуса>/<thread_id>/<message_id>
+*/
+
+// =====================================================================
+
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+let events = {}; // { "2026-08-12": [ {title, type, time, link} ] }
+let cur = new Date();
+let selectedKey = null;
+
+function dateKey(y, m, d) {
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function buildMessageLink(threadId, messageId) {
+  const chatIdClean = String(CHAT_ID).replace("-100", "");
+  return `https://t.me/c/${chatIdClean}/${threadId}/${messageId}`;
+}
+
+function loadEvents() {
+  if (!SHEET_CSV_URL || SHEET_CSV_URL.includes("PASTE_YOUR")) {
+    renderLegend();
+    render();
+    return;
+  }
+  Papa.parse(SHEET_CSV_URL, {
+    download: true,
+    header: true,
+    complete: (results) => {
+      events = {};
+      results.data.forEach((row) => {
+        if (!row.date) return;
+        const key = row.date.trim();
+        if (!events[key]) events[key] = [];
+        events[key].push({
+          title: row.title,
+          type: row.type,
+          time: row.time,
+          link: buildMessageLink(row.thread_id, row.message_id),
+        });
+      });
+      renderLegend();
+      render();
+    },
+    error: () => { renderLegend(); render(); }
+  });
+}
+
+function renderLegend() {
+  const legend = document.getElementById("legend");
+  legend.innerHTML = "";
+  Object.keys(TYPE_COLORS).forEach((type) => {
+    const el = document.createElement("span");
+    el.innerHTML = `<span class="dot" style="background:${TYPE_COLORS[type]}"></span>${TYPE_LABELS[type] || type}`;
+    legend.appendChild(el);
+  });
+}
+
+const monthNames = ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"];
+
+function render() {
+  document.getElementById("monthLabel").textContent = `${monthNames[cur.getMonth()]} ${cur.getFullYear()}`;
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  const year = cur.getFullYear(), month = cur.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let i = 0; i < offset; i++) grid.appendChild(document.createElement("div"));
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = dateKey(year, month, d);
+    const cell = document.createElement("div");
+    cell.className = "day" + (key === selectedKey ? " selected" : "");
+    cell.textContent = d;
+
+    if (events[key]) {
+      const dots = document.createElement("div");
+      dots.className = "day-dots";
+      events[key].forEach((e) => {
+        const dot = document.createElement("span");
+        dot.className = "day-dot";
+        dot.style.background = TYPE_COLORS[e.type] || "#999";
+        dots.appendChild(dot);
+      });
+      cell.appendChild(dots);
+    }
+
+    cell.addEventListener("click", () => { selectedKey = key; render(); });
+    grid.appendChild(cell);
+  }
+
+  renderPanel();
+}
+
+function renderPanel() {
+  const panel = document.getElementById("eventsPanel");
+  panel.innerHTML = "";
+  if (!selectedKey) return;
+
+  const label = document.createElement("p");
+  label.className = "events-date";
+  label.textContent = selectedKey;
+  panel.appendChild(label);
+
+  const dayEvents = events[selectedKey];
+  if (!dayEvents || dayEvents.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "Подій цього дня немає";
+    panel.appendChild(empty);
+    return;
+  }
+
+  dayEvents.forEach((e) => {
+    const card = document.createElement("div");
+    card.className = "event-card";
+    card.innerHTML = `
+      <span class="event-dot" style="background:${TYPE_COLORS[e.type] || "#999"}"></span>
+      <div style="flex:1">
+        <p class="name">${e.title || ""}</p>
+        <p class="time">${e.time || ""}</p>
+      </div>
+    `;
+    card.addEventListener("click", () => {
+      if (tg && e.link) {
+        tg.openTelegramLink(e.link);
+      } else if (e.link) {
+        window.open(e.link, "_blank");
+      }
+    });
+    panel.appendChild(card);
+  });
+}
+
+document.getElementById("prevBtn").addEventListener("click", () => {
+  cur.setMonth(cur.getMonth() - 1); selectedKey = null; render();
+});
+document.getElementById("nextBtn").addEventListener("click", () => {
+  cur.setMonth(cur.getMonth() + 1); selectedKey = null; render();
+});
+
+loadEvents();
+</script>
+</body>
+</html>
