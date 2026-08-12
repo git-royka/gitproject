@@ -1,8 +1,16 @@
 import { Telegraf, Markup } from "telegraf";
+import express from "express";
 import "dotenv/config";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MINIAPP_URL = process.env.MINIAPP_URL;
+// ID клубного чату (те саме значення, що CHAT_ID в index.html), звідки
+// проксі-ендпоінт нижче копіює повідомлення, щоб дістати фото/відео.
+const CHAT_ID = process.env.CHAT_ID;
+// Приватний чат (зазвичай особистий діалог адміна з ботом, ADMIN тут має
+// написати боту /start хоча б раз), куди тимчасово копіюються повідомлення
+// клубу, щоб дістати з них file_id фото/відео для проксі-ендпоінта нижче.
+const STORAGE_CHAT_ID = process.env.STORAGE_CHAT_ID;
 
 if (!BOT_TOKEN) {
   console.error("Немає BOT_TOKEN у .env файлі");
@@ -55,6 +63,63 @@ bot.command("calendar", async (ctx) => {
 bot.start(async (ctx) => {
   await ctx.reply(WELCOME_TEXT, calendarKeyboard());
 });
+
+// ---------------------------------------------------------------------
+// Медіа-проксі для календаря: index.html не може дістати фото/відео з
+// повідомлення напряму (Bot API вимагає токен, а публікувати токен у
+// статичному фронтенді небезпечно). Тому фронтенд запитує
+// GET /media/:messageId у цього сервера, а сервер сам ходить у Telegram
+// з токеном і віддає байти картинки.
+// ---------------------------------------------------------------------
+
+const mediaFileIdCache = new Map(); // messageId -> file_id
+const mediaBytesCache = new Map(); // messageId -> { buffer, contentType }
+
+async function resolveFileId(messageId) {
+  if (mediaFileIdCache.has(messageId)) return mediaFileIdCache.get(messageId);
+  if (!CHAT_ID || !STORAGE_CHAT_ID) {
+    throw new Error("CHAT_ID або STORAGE_CHAT_ID не налаштовано в .env");
+  }
+  const copied = await bot.telegram.copyMessage(STORAGE_CHAT_ID, CHAT_ID, Number(messageId));
+  const fileId =
+    copied.photo?.[copied.photo.length - 1]?.file_id ||
+    copied.video?.file_id ||
+    copied.document?.file_id;
+  bot.telegram.deleteMessage(STORAGE_CHAT_ID, copied.message_id).catch(() => {});
+  if (!fileId) throw new Error("У повідомленні немає фото/відео");
+  mediaFileIdCache.set(messageId, fileId);
+  return fileId;
+}
+
+const app = express();
+
+app.get("/media/:messageId", async (req, res) => {
+  const { messageId } = req.params;
+  try {
+    const cached = mediaBytesCache.get(messageId);
+    if (cached) {
+      res.set("Content-Type", cached.contentType);
+      res.set("Cache-Control", "public, max-age=86400");
+      return res.send(cached.buffer);
+    }
+    const fileId = await resolveFileId(messageId);
+    const file = await bot.telegram.getFile(fileId);
+    const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+    const resp = await fetch(fileUrl);
+    if (!resp.ok) throw new Error(`Telegram file download failed: ${resp.status}`);
+    const contentType = resp.headers.get("content-type") || "image/jpeg";
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    mediaBytesCache.set(messageId, { buffer, contentType });
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "public, max-age=86400");
+    res.send(buffer);
+  } catch (e) {
+    res.status(404).send("Медіа не знайдено");
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Медіа-проксі запущено на порту ${PORT}`));
 
 bot.launch();
 console.log("Бот запущено");

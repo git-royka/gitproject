@@ -11,8 +11,8 @@
     --bg: var(--tg-theme-bg-color, #ffffff);
     --text: var(--tg-theme-text-color, #222222);
     --hint: var(--tg-theme-hint-color, #999999);
-    --accent: var(--tg-theme-button-color, #2481cc);
-    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --accent: #0d4021;
+    --accent-text: #ffffff;
     --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f2);
   }
   * { box-sizing: border-box; }
@@ -85,6 +85,7 @@
   .event-card .name { margin: 0; font-size: 14px; font-weight: 600; }
   .event-card .time { margin: 0; font-size: 12px; color: var(--hint); }
   .event-card .summary { margin: 4px 0 0; font-size: 13px; color: var(--text); }
+  .event-card .summary-media { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-top: 6px; }
   .event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .empty { font-size: 14px; color: var(--hint); padding: 12px 4px; }
 </style>
@@ -124,6 +125,11 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNVvcFM2
 // 2. ID вашого чату (число зі знаком мінус для супергруп, напр. -1001234567890)
 const CHAT_ID = "-1004459521892";
 
+// 2b. Базовий URL задеплоєного bot.js (там піднято медіа-проксі "/media/:messageId",
+//     який дістає фото/відео з повідомлення по message_id). Порожній рядок = картинки
+//     в самарі не показуються, поки бот не задеплоєний.
+const MEDIA_BASE_URL = "";
+
 // 3. Кольори для типів подій. Ключ має збігатися зі значенням у колонці "type" таблиці.
 const TYPE_COLORS = {
   online: "#1D9E75",
@@ -160,6 +166,11 @@ function buildMessageLink(threadId, messageId) {
   return `https://t.me/c/${chatIdClean}/${threadId}/${messageId}`;
 }
 
+function buildMediaUrl(messageId) {
+  if (!MEDIA_BASE_URL || !messageId) return null;
+  return `${MEDIA_BASE_URL.replace(/\/$/, "")}/media/${messageId}`;
+}
+
 function loadEvents() {
   if (!SHEET_CSV_URL || SHEET_CSV_URL.includes("PASTE_YOUR")) {
     renderLegend();
@@ -182,6 +193,7 @@ function loadEvents() {
           time: row.time,
           summary: row.summary,
           link: buildMessageLink(row.thread_id, row.message_id),
+          mediaUrl: buildMediaUrl(row.message_id),
         });
       });
       renderLegend();
@@ -267,6 +279,7 @@ function renderPanel() {
       <div style="flex:1">
         <p class="name">${e.title || ""}</p>
         <p class="time">${e.time || ""}</p>
+        ${e.mediaUrl ? `<img class="summary-media" src="${e.mediaUrl}" alt="" loading="lazy" onerror="this.remove()">` : ""}
         ${e.summary ? `<p class="summary">${e.summary}</p>` : ""}
       </div>
     `;
