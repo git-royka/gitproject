@@ -136,7 +136,18 @@
     width: 28px; height: 28px; border-radius: 50%;
     font-size: 13px; color: var(--text); cursor: pointer;
   }
-  .sheet-body { overflow-y: auto; padding: 0 16px 16px; }
+  .sheet-body { overflow-y: auto; padding: 0 16px 16px; scroll-behavior: auto; }
+  .sheet-day-section { margin-bottom: 6px; scroll-margin-top: 2px; }
+  .sheet-day-label {
+    position: sticky; top: 0;
+    background: var(--bg);
+    margin: 0 0 8px;
+    padding: 6px 0;
+    font-size: 13px; font-weight: 700;
+    text-transform: capitalize;
+    color: var(--accent);
+    z-index: 1;
+  }
 
   .event-card {
     background: var(--secondary-bg);
@@ -366,39 +377,66 @@ function formatSheetDate(key) {
   return `${d} ${monthNames[m - 1].toLowerCase()}, ${weekdayNames[date.getDay()]}`;
 }
 
-function renderSheetBody(key) {
+function getSortedDateKeys() {
+  return Object.keys(events)
+    .filter((k) => events[k] && events[k].length)
+    .sort();
+}
+
+function buildEventCard(e) {
+  const card = document.createElement("div");
+  card.className = "event-card";
+  card.innerHTML = `
+    <span class="event-dot" style="background:${TYPE_COLORS[e.type] || "#999"}"></span>
+    <div style="flex:1; min-width:0">
+      <p class="name">${e.title || ""}</p>
+      <p class="time">${e.time || ""}</p>
+      ${e.mediaUrl ? `<img class="summary-media" src="${e.mediaUrl}" alt="" loading="lazy" onerror="this.remove()">` : ""}
+      ${e.summary ? `<p class="summary">${e.summary}</p>` : ""}
+    </div>
+  `;
+  card.addEventListener("click", () => {
+    if (tg && e.link) {
+      tg.openTelegramLink(e.link);
+    } else if (e.link) {
+      window.open(e.link, "_blank");
+    }
+  });
+  return card;
+}
+
+// Рендерить усю хронологічну стрічку подій (усі дати, не тільки обрана),
+// щоб її можна було гортати вгору/вниз, і проскролює до дня anchorKey.
+function renderSheetBody(anchorKey) {
   const body = document.getElementById("sheetBody");
   body.innerHTML = "";
 
-  const dayEvents = events[key];
-  if (!dayEvents || dayEvents.length === 0) {
+  const keys = getSortedDateKeys();
+  if (!keys.length) {
     const empty = document.createElement("p");
     empty.className = "empty";
-    empty.textContent = "Подій цього дня немає";
+    empty.textContent = "Подій ще немає";
     body.appendChild(empty);
     return;
   }
 
-  dayEvents.forEach((e) => {
-    const card = document.createElement("div");
-    card.className = "event-card";
-    card.innerHTML = `
-      <span class="event-dot" style="background:${TYPE_COLORS[e.type] || "#999"}"></span>
-      <div style="flex:1; min-width:0">
-        <p class="name">${e.title || ""}</p>
-        <p class="time">${e.time || ""}</p>
-        ${e.mediaUrl ? `<img class="summary-media" src="${e.mediaUrl}" alt="" loading="lazy" onerror="this.remove()">` : ""}
-        ${e.summary ? `<p class="summary">${e.summary}</p>` : ""}
-      </div>
-    `;
-    card.addEventListener("click", () => {
-      if (tg && e.link) {
-        tg.openTelegramLink(e.link);
-      } else if (e.link) {
-        window.open(e.link, "_blank");
-      }
-    });
-    body.appendChild(card);
+  keys.forEach((key) => {
+    const section = document.createElement("div");
+    section.className = "sheet-day-section";
+    section.id = `day-section-${key}`;
+
+    const label = document.createElement("p");
+    label.className = "sheet-day-label";
+    label.textContent = formatSheetDate(key);
+    section.appendChild(label);
+
+    events[key].forEach((e) => section.appendChild(buildEventCard(e)));
+    body.appendChild(section);
+  });
+
+  const scrollTarget = keys.includes(anchorKey) ? anchorKey : (keys.find((k) => k >= anchorKey) || keys[keys.length - 1]);
+  requestAnimationFrame(() => {
+    document.getElementById(`day-section-${scrollTarget}`)?.scrollIntoView({ block: "start" });
   });
 }
 
