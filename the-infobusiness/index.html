@@ -128,10 +128,12 @@ const CHAT_ID = "-1004459521892";
 // 3. Кольори для типів подій. Ключ має збігатися зі значенням у колонці "type" таблиці.
 const TYPE_COLORS = {
   online: "#1D9E75",
+  offline: "#D85A30",
   stream: "#7F77DD",
 };
 const TYPE_LABELS = {
   online: "Онлайн",
+  offline: "Офлайн",
   stream: "Ефір",
 };
 
@@ -180,7 +182,6 @@ function loadEvents() {
       events = {};
       results.data.forEach((row) => {
         if (!row.date) return;
-        if (row.type === "offline") return;
         const key = row.date.trim();
         if (!events[key]) events[key] = [];
         events[key].push({
