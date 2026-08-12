@@ -84,6 +84,7 @@
   }
   .event-card .name { margin: 0; font-size: 14px; font-weight: 600; }
   .event-card .time { margin: 0; font-size: 12px; color: var(--hint); }
+  .event-card .summary { margin: 4px 0 0; font-size: 13px; color: var(--text); }
   .event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .empty { font-size: 14px; color: var(--hint); padding: 12px 4px; }
 </style>
@@ -126,19 +127,17 @@ const CHAT_ID = "-1004459521892";
 // 3. Кольори для типів подій. Ключ має збігатися зі значенням у колонці "type" таблиці.
 const TYPE_COLORS = {
   online: "#1D9E75",
-  offline: "#D85A30",
   stream: "#7F77DD",
 };
 const TYPE_LABELS = {
   online: "Онлайн",
-  offline: "Офлайн",
   stream: "Ефір",
 };
 
 /*
   Очікувана структура Google Таблиці (колонки, перший рядок — заголовки):
-  date       | title                  | type   | time  | thread_id | message_id
-  2026-08-12 | Офлайн-зустріч у Києві | offline| 18:30 | 45        | 812
+  date       | title                | type   | time  | thread_id | message_id | summary
+  2026-08-20 | Онлайн-розбір домашки| online | 19:00 | 45        | 812        | Короткий опис події
   Посилання на повідомлення формується автоматично як:
   https://t.me/c/<CHAT_ID без мінуса>/<thread_id>/<message_id>
 */
@@ -174,12 +173,14 @@ function loadEvents() {
       events = {};
       results.data.forEach((row) => {
         if (!row.date) return;
+        if (row.type === "offline") return;
         const key = row.date.trim();
         if (!events[key]) events[key] = [];
         events[key].push({
           title: row.title,
           type: row.type,
           time: row.time,
+          summary: row.summary,
           link: buildMessageLink(row.thread_id, row.message_id),
         });
       });
@@ -266,6 +267,7 @@ function renderPanel() {
       <div style="flex:1">
         <p class="name">${e.title || ""}</p>
         <p class="time">${e.time || ""}</p>
+        ${e.summary ? `<p class="summary">${e.summary}</p>` : ""}
       </div>
     `;
     card.addEventListener("click", () => {
