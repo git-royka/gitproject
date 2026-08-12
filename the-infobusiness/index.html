@@ -172,7 +172,8 @@ function loadEvents() {
     render();
     return;
   }
-  Papa.parse(SHEET_CSV_URL, {
+  const cacheBustedUrl = `${SHEET_CSV_URL}&_=${Date.now()}`;
+  Papa.parse(cacheBustedUrl, {
     download: true,
     header: true,
     complete: (results) => {
