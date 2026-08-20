@@ -317,6 +317,7 @@ function renderLegend() {
 }
 
 const monthNames = ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"];
+const monthNamesGenitive = ["січня","лютого","березня","квітня","травня","червня","липня","серпня","вересня","жовтня","листопада","грудня"];
 const weekdayNames = ["неділя","понеділок","вівторок","середа","четвер","п'ятниця","субота"];
 
 function isSameDay(a, b) {
@@ -407,7 +408,7 @@ function renderNextEvent() {
 function formatSheetDate(key) {
   const [y, m, d] = key.split("-").map(Number);
   const date = new Date(y, m - 1, d);
-  return `${d} ${monthNames[m - 1].toLowerCase()}, ${weekdayNames[date.getDay()]}`;
+  return `${d} ${monthNamesGenitive[m - 1]}, ${weekdayNames[date.getDay()]}`;
 }
 
 function getSortedDateKeys() {
