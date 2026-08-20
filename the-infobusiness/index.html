@@ -211,7 +211,7 @@ const CHAT_ID = "-1004459521892";
 
 // 3. Кольори для типів подій. Ключ має збігатися зі значенням у колонці "type" таблиці.
 const TYPE_COLORS = {
-  lesson: "#2F6FED",
+  lesson: "#1D9E75",
   stream: "#7F77DD",
 };
 const TYPE_LABELS = {
@@ -346,7 +346,7 @@ function render() {
         const chip = document.createElement("span");
         chip.className = "day-chip";
         chip.style.background = TYPE_COLORS[e.type] || "#999";
-        chip.textContent = e.title || TYPE_LABELS[e.type] || "";
+        chip.textContent = e.time || TYPE_LABELS[e.type] || "";
         chips.appendChild(chip);
       });
       if (dayEvents.length > 2) {
