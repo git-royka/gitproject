@@ -41,11 +41,16 @@ function calendarKeyboard() {
   ]);
 }
 
-// Прибирає службові повідомлення "X приєднався"/"X вийшов з групи", щоб
-// вони не засмічували чат. Потребує права "Delete Messages" у бота в групі.
-bot.on(["new_chat_members", "left_chat_member"], async (ctx) => {
-  await ctx.deleteMessage().catch(() => {});
-});
+// Прибирає службові повідомлення (приєднався/вийшов/закріпив/приховав
+// гілку General), щоб вони не засмічували чат. Потребує права
+// "Delete Messages" у бота в групі. Зняття закріплення Telegram не
+// оформлює окремим повідомленням, тому там нічого видаляти.
+bot.on(
+  ["new_chat_members", "left_chat_member", "pinned_message", "general_forum_topic_hidden", "general_forum_topic_unhidden"],
+  async (ctx) => {
+    await ctx.deleteMessage().catch(() => {});
+  }
+);
 
 // Команда /calendar в будь-якому місці чату
 bot.command("calendar", async (ctx) => {
