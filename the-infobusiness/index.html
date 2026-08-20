@@ -13,8 +13,8 @@
     --hint: var(--tg-theme-hint-color, #999999);
     --accent: #0d4021;
     --accent-ink: #0d4021;
+    --accent-ink-bg: rgba(13, 64, 33, .12);
     --accent-text: #ffffff;
-    --accent-complement: #e0527d;
     --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f2);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,14 +39,14 @@
   .header button {
     width: 32px; height: 32px;
     border: none; border-radius: 10px;
-    background: rgba(224, 82, 125, .14);
-    color: var(--accent-complement);
+    background: var(--accent-ink-bg);
+    color: var(--accent-ink);
     font-size: 18px;
     font-weight: 700;
     cursor: pointer;
     transition: transform .12s ease, background .15s ease;
   }
-  .header button:active { transform: scale(.9); background: rgba(224, 82, 125, .24); }
+  .header button:active { transform: scale(.9); }
   .month-label { font-size: 16px; font-weight: 700; text-transform: capitalize; color: var(--accent-ink); }
 
   .legend { display: flex; gap: 8px; font-size: 12px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -238,6 +238,7 @@ if (tg) { tg.ready(); tg.expand(); }
 function applyAccentInk() {
   const isDark = tg?.colorScheme === "dark";
   document.documentElement.style.setProperty("--accent-ink", isDark ? "#ffffff" : "#0d4021");
+  document.documentElement.style.setProperty("--accent-ink-bg", isDark ? "rgba(255,255,255,.14)" : "rgba(13,64,33,.12)");
 }
 applyAccentInk();
 if (tg) tg.onEvent("themeChanged", applyAccentInk);
