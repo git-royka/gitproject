@@ -12,6 +12,7 @@
     --text: var(--tg-theme-text-color, #222222);
     --hint: var(--tg-theme-hint-color, #999999);
     --accent: #0d4021;
+    --accent-ink: #0d4021;
     --accent-text: #ffffff;
     --accent-complement: #e0527d;
     --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f2);
@@ -46,7 +47,7 @@
     transition: transform .12s ease, background .15s ease;
   }
   .header button:active { transform: scale(.9); background: rgba(224, 82, 125, .24); }
-  .month-label { font-size: 16px; font-weight: 700; text-transform: capitalize; color: var(--accent); }
+  .month-label { font-size: 16px; font-weight: 700; text-transform: capitalize; color: var(--accent-ink); }
 
   .legend { display: flex; gap: 8px; font-size: 12px; margin-bottom: 12px; flex-wrap: wrap; }
   .legend-chip {
@@ -80,7 +81,7 @@
     overflow: hidden;
     transition: background .15s ease, color .15s ease;
   }
-  .day-num { font-size: 12px; font-weight: 600; line-height: 1; color: var(--accent); }
+  .day-num { font-size: 12px; font-weight: 600; line-height: 1; color: var(--accent-ink); }
   .day.today .day-num {
     display: inline-flex; align-items: center; justify-content: center;
   }
@@ -130,7 +131,7 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 2px 16px 10px; flex-shrink: 0;
   }
-  .sheet-date { margin: 0; font-size: 15px; font-weight: 700; text-transform: capitalize; color: var(--accent); }
+  .sheet-date { margin: 0; font-size: 15px; font-weight: 700; text-transform: capitalize; color: var(--accent-ink); }
   .sheet-close {
     border: none; background: var(--secondary-bg);
     width: 28px; height: 28px; border-radius: 50%;
@@ -145,7 +146,7 @@
     padding: 6px 0;
     font-size: 13px; font-weight: 700;
     text-transform: capitalize;
-    color: var(--accent);
+    color: var(--accent-ink);
     z-index: 1;
   }
 
@@ -231,6 +232,15 @@ const TYPE_LABELS = {
 
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
+
+// В темній темі Telegram темно-зелений акцент майже зливається з фоном —
+// перемикаємо текстовий акцент (назва місяця, числа днів) на білий.
+function applyAccentInk() {
+  const isDark = tg?.colorScheme === "dark";
+  document.documentElement.style.setProperty("--accent-ink", isDark ? "#ffffff" : "#0d4021");
+}
+applyAccentInk();
+if (tg) tg.onEvent("themeChanged", applyAccentInk);
 
 let events = {}; // { "2026-08-12": [ {title, type, time, summary, link, mediaUrl} ] }
 let cur = new Date();
