@@ -260,11 +260,13 @@ function buildMediaUrl(messageId) {
 }
 
 function loadEvents() {
-  if (!SHEET_CSV_URL || SHEET_CSV_URL.includes("PASTE_YOUR")) {
-    renderLegend();
-    render();
-    return;
-  }
+  // Малюємо порожню сітку одразу, не чекаючи мережевого запиту до Google
+  // Sheets — інакше календар "висить" білим/порожнім кілька секунд.
+  renderLegend();
+  render();
+
+  if (!SHEET_CSV_URL || SHEET_CSV_URL.includes("PASTE_YOUR")) return;
+
   const cacheBustedUrl = `${SHEET_CSV_URL}&_=${Date.now()}`;
   Papa.parse(cacheBustedUrl, {
     download: true,
@@ -284,10 +286,8 @@ function loadEvents() {
           mediaUrl: buildMediaUrl(row.message_id),
         });
       });
-      renderLegend();
       render();
     },
-    error: () => { renderLegend(); render(); }
   });
 }
 
