@@ -398,7 +398,7 @@ function renderNextEvent() {
 
   const title = document.createElement("p");
   title.className = "next-event-title";
-  title.textContent = "Найближча подія 🔥";
+  title.textContent = `Найближча подія (${formatSheetDate(nextKey)}) 🔥`;
   container.appendChild(title);
 
   events[nextKey].forEach((e) => container.appendChild(buildEventCard(e)));
