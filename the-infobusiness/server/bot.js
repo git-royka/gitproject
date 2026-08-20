@@ -41,19 +41,6 @@ function calendarKeyboard() {
   ]);
 }
 
-// Вітання нового учасника групи
-bot.on("new_chat_members", async (ctx) => {
-  for (const member of ctx.message.new_chat_members) {
-    if (member.is_bot) continue;
-    try {
-      await ctx.telegram.sendMessage(member.id, WELCOME_TEXT, calendarKeyboard());
-    } catch (e) {
-      // Користувач не писав боту в приват — надсилаємо в групу з тегом
-      await ctx.reply(`Вітаємо, ${member.first_name}! ${WELCOME_TEXT}`, calendarKeyboard());
-    }
-  }
-});
-
 // Команда /calendar в будь-якому місці чату
 bot.command("calendar", async (ctx) => {
   await ctx.reply("Відкрити календар подій:", calendarKeyboard());
