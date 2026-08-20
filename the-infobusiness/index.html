@@ -12,8 +12,8 @@
     --text: var(--tg-theme-text-color, #222222);
     --hint: var(--tg-theme-hint-color, #999999);
     --accent: #0d4021;
-    --accent-ink: #0d4021;
-    --accent-ink-bg: rgba(13, 64, 33, .12);
+    --accent-ink: #000000;
+    --accent-ink-bg: rgba(0, 0, 0, .1);
     --accent-text: #ffffff;
     --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f2);
   }
@@ -237,8 +237,8 @@ if (tg) { tg.ready(); tg.expand(); }
 // перемикаємо текстовий акцент (назва місяця, числа днів) на білий.
 function applyAccentInk() {
   const isDark = tg?.colorScheme === "dark";
-  document.documentElement.style.setProperty("--accent-ink", isDark ? "#ffffff" : "#0d4021");
-  document.documentElement.style.setProperty("--accent-ink-bg", isDark ? "rgba(255,255,255,.14)" : "rgba(13,64,33,.12)");
+  document.documentElement.style.setProperty("--accent-ink", isDark ? "#ffffff" : "#000000");
+  document.documentElement.style.setProperty("--accent-ink-bg", isDark ? "rgba(255,255,255,.14)" : "rgba(0,0,0,.1)");
 }
 applyAccentInk();
 if (tg) tg.onEvent("themeChanged", applyAccentInk);
