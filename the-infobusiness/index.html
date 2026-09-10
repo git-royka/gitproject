@@ -207,6 +207,7 @@ function loadEvents() {
   const cacheBustedUrl = `${SHEET_CSV_URL}&_=${Date.now()}`;
   Papa.parse(cacheBustedUrl, {
     download: true,
+    transformHeader: (h) => h.trim(),
     header: true,
     complete: (results) => {
       events = {};
