@@ -133,6 +133,8 @@ const TYPE_LABELS = {
 };
 
 // 4. Тема місяця — показується під назвою місяця. Ключ — номер місяця (0 = січень, 11 = грудень).
+//    Це запасний варіант: якщо в Google Таблиці для місяця заповнена колонка "theme"
+//    (в будь-якому одному рядку цього місяця), вона має пріоритет над цими значеннями.
 const MONTH_THEMES = {
   8: "АІ в інфобізнесі",        // вересень
   9: "Воронки, що продають",    // жовтень
@@ -143,10 +145,14 @@ const MONTH_THEMES = {
 
 /*
   Очікувана структура Google Таблиці (колонки, перший рядок — заголовки):
-  date       | title                | type   | time  | thread_id | message_id | summary
-  2026-08-20 | Розбір домашки       | lesson | 19:00 | 45        | 812        | Короткий опис події
+  date       | title                | type   | time  | thread_id | message_id | summary | theme
+  2026-08-20 | Розбір домашки       | lesson | 19:00 | 45        | 812        | ...     | АІ в інфобізнесі
+  2026-08-27 | Прямий ефір з гостем | stream | 20:00 | 45        | 900        | ...     |
   Посилання на повідомлення формується автоматично як:
   https://t.me/c/<CHAT_ID без мінуса>/<thread_id>/<message_id>
+
+  Колонка "theme" (тема місяця) заповнюється лише в ОДНОМУ будь-якому рядку
+  потрібного місяця — решта рядків того ж місяця лишаються порожніми в цій колонці.
 */
 
 // =====================================================================
@@ -165,6 +171,7 @@ applyAccentInk();
 if (tg) tg.onEvent("themeChanged", applyAccentInk);
 
 let events = {}; // { "2026-08-12": [ {title, type, time, summary, link, mediaUrl} ] }
+let sheetThemes = {}; // { "2026-09": "АІ в інфобізнесі" } — з колонки "theme" таблиці
 let cur = new Date();
 
 function dateKey(y, m, d) {
@@ -203,6 +210,7 @@ function loadEvents() {
     header: true,
     complete: (results) => {
       events = {};
+      sheetThemes = {};
       results.data.forEach((row) => {
         if (!row.date) return;
         const key = row.date.trim();
@@ -215,6 +223,9 @@ function loadEvents() {
           link: buildMessageLink(row.thread_id, row.message_id),
           mediaUrl: buildMediaUrl(row.message_id),
         });
+        if (row.theme && row.theme.trim()) {
+          sheetThemes[key.slice(0, 7)] = row.theme.trim();
+        }
       });
       render();
     },
@@ -273,7 +284,8 @@ function buildEventCard(e) {
 function render() {
   const year = cur.getFullYear(), month = cur.getMonth();
   document.getElementById("monthLabel").textContent = `${monthNames[month]} ${year}`;
-  document.getElementById("monthTheme").textContent = MONTH_THEMES[month] || "";
+  const yearMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  document.getElementById("monthTheme").textContent = sheetThemes[yearMonthKey] || MONTH_THEMES[month] || "";
 
   const feed = document.getElementById("feed");
   feed.innerHTML = "";
