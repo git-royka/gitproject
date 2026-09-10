@@ -215,6 +215,15 @@ function loadEvents() {
       results.data.forEach((row) => {
         if (!row.date) return;
         const key = row.date.trim();
+
+        if (row.theme && row.theme.trim()) {
+          sheetThemes[key.slice(0, 7)] = row.theme.trim();
+        }
+
+        // Рядок лише для теми місяця (без назви) не рендериться як подія —
+        // так можна задати тему в таблиці навіть для місяця без жодної події.
+        if (!row.title || !row.title.trim()) return;
+
         if (!events[key]) events[key] = [];
         events[key].push({
           title: row.title,
@@ -224,9 +233,6 @@ function loadEvents() {
           link: buildMessageLink(row.thread_id, row.message_id),
           mediaUrl: buildMediaUrl(row.message_id),
         });
-        if (row.theme && row.theme.trim()) {
-          sheetThemes[key.slice(0, 7)] = row.theme.trim();
-        }
       });
       render();
     },
