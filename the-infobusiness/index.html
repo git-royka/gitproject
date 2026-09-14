@@ -86,6 +86,9 @@
   .event-card .time { margin: 2px 0 0; font-size: 12px; color: var(--hint); }
   .event-card .summary { margin: 6px 0 0; font-size: 13px; color: var(--text); white-space: pre-wrap; }
   .event-card .summary-media { display: block; width: 100%; height: 180px; object-fit: cover; border-radius: 10px; margin-top: 8px; background: var(--bg); }
+  .event-card.banner-card { cursor: default; flex-direction: column; }
+  .event-card.banner-card .summary-media { margin-top: 0; }
+  .event-card.banner-card .summary { text-align: center; }
   .empty { font-size: 14px; color: var(--hint); padding: 8px 4px; }
 </style>
 </head>
@@ -153,6 +156,14 @@ const MONTH_THEMES = {
 
   Колонка "theme" (тема місяця) заповнюється лише в ОДНОМУ будь-якому рядку
   потрібного місяця — решта рядків того ж місяця лишаються порожніми в цій колонці.
+
+  Банер "скоро з'являться нові події" для місяців без жодної події:
+  додайте ОДИН рядок з type="banner" — дата, thread_id і theme йому не потрібні,
+  лише title (текст під банером) і message_id (повідомлення з фото — можна з
+  прихованої гілки, медіа-проксі дістає його за message_id незалежно від гілки):
+  date | title                              | type   | ... | message_id | summary
+       | Зовсім скоро тут будуть нові події | banner |     | 187        |
+  Такий рядок показується в БУДЬ-ЯКОМУ місяці, де ще немає жодної реальної події.
 */
 
 // =====================================================================
@@ -172,6 +183,7 @@ if (tg) tg.onEvent("themeChanged", applyAccentInk);
 
 let events = {}; // { "2026-08-12": [ {title, type, time, summary, link, mediaUrl} ] }
 let sheetThemes = {}; // { "2026-09": "АІ в інфобізнесі" } — з колонки "theme" таблиці
+let comingSoonBanner = null; // { title, mediaUrl } — з рядка type="banner", показується в місяцях без подій
 let cur = new Date();
 
 function dateKey(y, m, d) {
@@ -212,7 +224,16 @@ function loadEvents() {
     complete: (results) => {
       events = {};
       sheetThemes = {};
+      comingSoonBanner = null;
       results.data.forEach((row) => {
+        if ((row.type || "").trim().toLowerCase() === "banner") {
+          comingSoonBanner = {
+            title: row.title,
+            mediaUrl: buildMediaUrl(row.message_id),
+          };
+          return;
+        }
+
         if (!row.date) return;
         const key = row.date.trim();
 
@@ -288,6 +309,18 @@ function buildEventCard(e) {
   return card;
 }
 
+function buildBannerCard(banner) {
+  const card = document.createElement("div");
+  card.className = "event-card banner-card";
+  card.innerHTML = `
+    <div style="flex:1; min-width:0">
+      ${banner.mediaUrl ? `<img class="summary-media" src="${banner.mediaUrl}" alt="" loading="lazy" onerror="this.remove()">` : ""}
+      ${banner.title ? `<p class="summary">${banner.title}</p>` : ""}
+    </div>
+  `;
+  return card;
+}
+
 function render() {
   const year = cur.getFullYear(), month = cur.getMonth();
   document.getElementById("monthLabel").textContent = `${monthNames[month]} ${year}`;
@@ -301,10 +334,14 @@ function render() {
   const keys = getSortedDateKeys().filter((k) => k.startsWith(monthPrefix));
 
   if (!keys.length) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent = "У цьому місяці подій ще немає";
-    feed.appendChild(empty);
+    if (comingSoonBanner) {
+      feed.appendChild(buildBannerCard(comingSoonBanner));
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "У цьому місяці подій ще немає";
+      feed.appendChild(empty);
+    }
     return;
   }
 
