@@ -334,7 +334,9 @@ function render() {
   const keys = getSortedDateKeys().filter((k) => k.startsWith(monthPrefix));
 
   if (!keys.length) {
-    if (comingSoonBanner) {
+    const today = new Date();
+    const isPastMonth = year < today.getFullYear() || (year === today.getFullYear() && month < today.getMonth());
+    if (comingSoonBanner && !isPastMonth) {
       feed.appendChild(buildBannerCard(comingSoonBanner));
     } else {
       const empty = document.createElement("p");
